@@ -1,0 +1,24 @@
+$include:
+  - conf/final/24khz.yml
+
+# 1gpu
+# batch_size: 36
+# val_batch_size: 36
+# num_workers: 8
+resume: true
+
+train/build_dataset.folders:
+  speech_libritts:
+    - /star-home/jinzengrui/data/libritts/LibriTTS/train-clean-100
+    - /star-home/jinzengrui/data/libritts/LibriTTS/train-clean-360
+    - /star-home/jinzengrui/data/libritts/LibriTTS/train-other-500
+
+val/build_dataset.folders:
+  speech_libritts:
+    - /star-home/jinzengrui/data/libritts/LibriTTS/dev-clean
+    - /star-home/jinzengrui/data/libritts/LibriTTS/dev-other
+
+test/build_dataset.folders:
+  speech_libritts:
+    - /star-home/jinzengrui/data/libritts/LibriTTS/test-clean
+    - /star-home/jinzengrui/data/libritts/LibriTTS/test-other
