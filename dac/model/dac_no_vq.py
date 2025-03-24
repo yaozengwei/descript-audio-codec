@@ -292,9 +292,14 @@ class DACNoVq(BaseModel, CodecMixin):
         length = audio_data.shape[-1]
         audio_data = self.preprocess(audio_data, sample_rate)
         z = self.encode(audio_data)
-        noise = torch.randn_like(z)
-        epsilon = torch.rand(z.shape[0], 1, 1).to(z) * self.max_epsilon
-        noisy_z = z + noise * epsilon
+
+        if self.training:
+            noise = torch.randn_like(z)
+            epsilon = torch.rand(z.shape[0], 1, 1).to(z) * self.max_epsilon
+            noisy_z = z + noise * epsilon
+        else:
+            noisy_z = z  # Don't add noise at eval mode
+
         x = self.decode(noisy_z)
         return {
             "audio": x[..., :length],
