@@ -6,6 +6,7 @@ import torch.nn.functional as F
 from audiotools import AudioSignal
 from audiotools import STFTParams
 from torch import nn
+from torchaudio.transforms import MelSpectrogram
 
 
 class L1Loss(nn.L1Loss):
@@ -366,3 +367,108 @@ class GANLoss(nn.Module):
             for j in range(len(d_fake[i]) - 1):
                 loss_feature += F.l1_loss(d_fake[i][j], d_real[i][j].detach())
         return loss_g, loss_feature
+
+
+class MelScaledLoss(nn.Module):
+    """Compute distance between mel spectrograms. Can be used
+    in a multi-scale way.
+
+    Parameters
+    ----------
+    n_mels : List[int]
+        Number of mels per STFT, by default [150, 80],
+    window_lengths : List[int], optional
+        Length of each window of each STFT, by default [2048, 512]
+    loss_fn : typing.Callable, optional
+        How to compare each loss, by default nn.L1Loss()
+    clamp_eps : float, optional
+        Clamp on the log magnitude, below, by default 1e-5
+    mag_weight : float, optional
+        Weight of raw magnitude portion of loss, by default 1.0
+    log_weight : float, optional
+        Weight of log magnitude portion of loss, by default 1.0
+    pow : float, optional
+        Power to raise magnitude to before taking log, by default 2.0
+    weight : float, optional
+        Weight of this loss, by default 1.0
+    match_stride : bool, optional
+        Whether to match the stride of convolutional layers, by default False
+
+    Implementation copied from: https://github.com/descriptinc/lyrebird-audiotools/blob/961786aa1a9d628cca0c0486e5885a457fe70c1a/audiotools/metrics/spectral.py
+    """
+
+    def __init__(
+        self,
+        sample_rate: int = 24000,
+        n_mels: List[int] = [150, 80],
+        window_lengths: List[int] = [2048, 512],
+        eps: float = 1e-7,
+        loss_power: float = 0.5,
+        mel_fmin: List[float] = [0.0, 0.0],
+        mel_fmax: List[float] = [None, None],
+    ):
+        super().__init__()
+        self.mel_modules = nn.ModuleList([
+            MelSpectrogram(
+                sample_rate=sample_rate,
+                n_fft=w,
+                win_length=w,
+                hop_length=w // 4,
+                n_mels=m,
+                window_fn=torch.hann_window,
+                center=True,
+                power=2,
+                f_min=fmin,
+                f_max=fmax,
+            )
+            for w, m, fmin, fmax in zip(window_lengths, n_mels, mel_fmin, mel_fmax)
+        ])
+
+        self.n_mels = n_mels
+        self.window_lengths = window_lengths
+        self.eps = eps
+        self.loss_power = loss_power
+        self.mel_fmin = mel_fmin
+        self.mel_fmax = mel_fmax
+
+    def forward(self, x: AudioSignal, y: AudioSignal):
+        """Computes mel loss between an estimate and a reference
+        signal.
+
+        Parameters
+        ----------
+        x : AudioSignal
+            Estimate signal
+        y : AudioSignal
+            Reference signal
+
+        Returns
+        -------
+        torch.Tensor
+            Mel loss.
+        """
+        loss = 0.0
+        for mel in self.mel_modules:
+            err = x.audio_data - y.audio_data
+            err_mels = mel(err)
+            y_mels = mel(y.audio_data)
+            # the err_mel_spec.sum() is just an aggregation of squared errors for FFT bins, with
+            # frequency-specific weightings.  Scaling by (mel_spec + eps) ** -loss_power is a heuristic
+            # scale that puts more weight on quieter regions of the spectrum, where presumably
+            # differences would be more audible; the choice of 0.5 for loss_power is arbitrary, it
+            # could be anywhere between 0 (no correction for volume) and 1 (fully invariant to
+            # local volume).
+            loss += (err_mels * ((y_mels + self.eps) ** -self.loss_power)).mean()
+
+        return loss
+
+
+class BatchRMSLoss(nn.Module):
+    def __init__(self, rms_limit: float = 1.0):
+        super().__init__()
+        self.rms_limit = rms_limit
+
+    def forward(self, x: torch.Tensor):
+        batch_rms = (x ** 2).mean().sqrt()
+        loss = (batch_rms - self.rms_limit).clamp(min=0.0)
+        return loss, batch_rms.detach()
