@@ -143,7 +143,7 @@ def load(
             "package": not load_weights,
         }
         tracker.print(f"Resuming from {str(Path('.').absolute())}/{kwargs['folder']}")
-        if (Path(kwargs["folder"]) / "dac").exists():
+        if (Path(kwargs["folder"]) / "dacnovq").exists():
             generator, g_extra = DACNoVq.load_from_folder(**kwargs)
         if (Path(kwargs["folder"]) / "discriminator").exists():
             discriminator, d_extra = Discriminator.load_from_folder(**kwargs)
