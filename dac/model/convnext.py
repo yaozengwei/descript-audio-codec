@@ -177,6 +177,8 @@ class ConvNeXtV2Model(nn.Module):
         use_dest_t: bool = False,
     ):
         super().__init__()
+        self.use_dest_t = use_dest_t
+
         self.in_proj = nn.Conv1d(in_dim, dim, 1)
 
         self.time_embed = SinusoidalPosEmb(dim)
@@ -234,7 +236,7 @@ class ConvNeXtV2Model(nn.Module):
         for block in self.blocks:
             x = block(x, cond=time_embed, mask=mask)
 
-        x = self.norm(x)
+        x = self.norm(x.transpose(1, 2)).transpose(1, 2)
         x = self.out_proj(x)
 
         return x
@@ -282,18 +284,21 @@ class MelEncoder(nn.Module):
         return x
 
 
+def init_weights(m):
+    if isinstance(m, nn.Conv1d):
+        nn.init.trunc_normal_(m.weight, std=0.02)
+        nn.init.constant_(m.bias, 0)
+
+
 class FlowMatchModel(nn.Module):
     """Flow-matching model"""
     def __init__(
         self,
-        n_mels: int,
-        in_dim: int,
-        dim: int,
-        out_dim: int,
-        num_layers: int,
-        mel_enc_num_layers: int,
+        n_mels: int = 100,
+        dim: int = 512,
+        num_layers: int = 12,
+        mel_enc_num_layers: int = 4,
         drop_path_rate: float = 0.0,
-        use_dest_t: bool = False,
     ):
         super().__init__()
         self.estimator = ConvNeXtV2Model(
@@ -311,6 +316,15 @@ class FlowMatchModel(nn.Module):
             num_layers=mel_enc_num_layers,
             drop_path_rate=drop_path_rate,
         )
+
+        self.apply(self._init_weights)
+
+    @torch.no_grad()
+    def _init_weights(self, m):
+        if isinstance(m, (nn.Conv1d, nn.Linear)):
+            nn.init.trunc_normal_(m.weight, std=0.02)
+            if hasattr(m, 'bias') and isinstance(m.bias, torch.Tensor):
+                nn.init.constant_(m.bias, 0)
 
     def forward(
         self,
@@ -381,3 +395,24 @@ class FlowMatchModel(nn.Module):
             t = t_span[step]
 
         return x
+
+
+if __name__ == "__main__":
+    n_mels = 100
+    dim = 512
+    num_layers = 12
+    mel_enc_num_layers = 4
+    model = FlowMatchModel(n_mels, dim, num_layers, mel_enc_num_layers)
+    print(model)
+    print("Total # of params: ", sum([p.numel() for p in model.parameters()]))
+
+    batch = 2
+    time = 200
+    x = torch.randn(batch, dim, time)
+    mel = torch.randn(batch, n_mels, time - 1)
+    mask = torch.ones(batch, 1, time)
+    loss = model(x, mel, mask)
+    loss.backward()
+
+    y = model.infer(x, mel, mask, 8)
+    assert y.shape == x.shape
