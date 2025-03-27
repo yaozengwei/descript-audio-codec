@@ -1,0 +1,24 @@
+$include:
+  - conf/final/24khz.yml
+
+# 1gpu
+# batch_size: 36
+# val_batch_size: 36
+# num_workers: 8
+# resume: true
+
+train/build_dataset.folders:
+  speech_libritts:
+    - download/LibriTTS/train-clean-100
+    - download/LibriTTS/train-clean-360
+    - download/LibriTTS/train-other-500
+
+val/build_dataset.folders:
+  speech_libritts:
+    - download/LibriTTS/dev-clean
+    - download/LibriTTS/dev-other
+
+test/build_dataset.folders:
+  speech_libritts:
+    - download/LibriTTS/test-clean
+    - download/LibriTTS/test-other
