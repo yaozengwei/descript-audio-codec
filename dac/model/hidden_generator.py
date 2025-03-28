@@ -80,7 +80,7 @@ class HiddenGenerator(BaseModel):
         mel = self.mel(audio_data.squeeze(1))
 
         batch, _, time = audio_data.shape
-        z_len = math.ceil(time, self.dac.hop_length)
+        z_len = math.ceil(time / self.dac.hop_length)
         noise = torch.randn(batch, self.dim, z_len).to(audio_data)
 
         z = self.flow_matching.infer(x0=noise, mel=mel, num_steps=num_steps)
