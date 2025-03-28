@@ -45,12 +45,12 @@ class HiddenGenerator(BaseModel):
     ):
         """Compute flow-matching loss
         Args:
-            audio_data: (batch, time)
+            audio_data: (batch, 1, time)
             sample_rate: int, optional
         """
         if sample_rate is not None:
             assert sample_rate == self.sample_rate
-        mel = self.mel(audio_data)
+        mel = self.mel(audio_data.squeeze(1))
 
         with torch.no_grad():
             audio_data = self.dac.preprocess(audio_data, sample_rate)
@@ -69,13 +69,13 @@ class HiddenGenerator(BaseModel):
     ):
         """Flow-matching inference.
         Args:
-            audio_data: (batch, time)
+            audio_data: (batch, 1, time)
             sample_rate: int, optional
             num_steps: int
         """
         if sample_rate is not None:
             assert sample_rate == self.sample_rate
-        mel = self.mel(audio_data)
+        mel = self.mel(audio_data.squeeze(1))
 
         batch, time = audio_data.shape
         z_len = math.ceil(time, self.dac.hop_length)
