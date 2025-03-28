@@ -380,8 +380,8 @@ class FlowMatching(nn.Module):
         self,
         x0: torch.Tensor,
         mel: torch.Tensor,
-        mask: torch.Tensor,
-        num_steps: int,
+        mask: Optional[torch.Tensor] = None,
+        num_steps: int = 8,
     ) -> torch.Tensor:
         """Flow-matching inference.
         Args:
