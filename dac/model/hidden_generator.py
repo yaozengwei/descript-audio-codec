@@ -79,7 +79,7 @@ class HiddenGenerator(BaseModel):
             assert sample_rate == self.sample_rate
         mel = self.mel(audio_data.squeeze(1))
 
-        batch, time = audio_data.shape
+        batch, _, time = audio_data.shape
         z_len = math.ceil(time, self.dac.hop_length)
         noise = torch.randn(batch, self.dim, z_len).to(audio_data)
 
