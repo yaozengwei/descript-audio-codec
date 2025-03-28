@@ -32,9 +32,11 @@ class HiddenGenerator(BaseModel):
         mel: nn.Module,
     ):
         super().__init__()
+        assert mel.sample_rate == dac.sample_rate
         self.flow_matching = flow_matching
         self.dac = dac
         self.mel = mel
+        self.sample_rate = dac.sample_rate
 
     def forward(
         self,
@@ -47,7 +49,7 @@ class HiddenGenerator(BaseModel):
             sample_rate: int, optional
         """
         if sample_rate is not None:
-            assert sample_rate == self.mel.sample_rate
+            assert sample_rate == self.sample_rate
         mel = self.mel(audio_data)
 
         with torch.no_grad():
@@ -72,7 +74,7 @@ class HiddenGenerator(BaseModel):
             num_steps: int
         """
         if sample_rate is not None:
-            assert sample_rate == self.mel.sample_rate
+            assert sample_rate == self.sample_rate
         mel = self.mel(audio_data)
 
         batch, time = audio_data.shape
