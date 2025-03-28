@@ -3,7 +3,7 @@ $include:
 
 # Model setup
 FlowMatching.n_mels: 100
-FlowMatching.dim: 512
+FlowMatching.dim: 1024
 FlowMatching.num_layers: 12
 FlowMatching.mel_enc_num_layers: 4
 FlowMatching.drop_path_rate: 0.1

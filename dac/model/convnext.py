@@ -301,6 +301,7 @@ class FlowMatching(nn.Module):
         drop_path_rate: float = 0.0,
     ):
         super().__init__()
+        self.dim = dim
         self.estimator = ConvNeXtV2Model(
             in_dim=dim,
             dim=dim,

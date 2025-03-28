@@ -33,10 +33,12 @@ class HiddenGenerator(BaseModel):
     ):
         super().__init__()
         assert mel.sample_rate == dac.sample_rate
+        assert flow_matching.dim == dac.latent_dim
         self.flow_matching = flow_matching
         self.dac = dac
         self.mel = mel
         self.sample_rate = dac.sample_rate
+        self.dim = dac.latent_dim
 
     def forward(
         self,
@@ -79,7 +81,7 @@ class HiddenGenerator(BaseModel):
 
         batch, time = audio_data.shape
         z_len = math.ceil(time, self.dac.hop_length)
-        noise = torch.randn(batch, self.dac.latent_dim, z_len).to(audio_data)
+        noise = torch.randn(batch, self.dim, z_len).to(audio_data)
 
         z = self.flow_matching.infer(x0=noise, mel=mel, num_steps=num_steps)
         recons = self.dac.decode(z)
