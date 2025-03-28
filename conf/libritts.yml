@@ -34,16 +34,16 @@ BatchRMSLoss.rms_limit: 1.0
 
 train/build_dataset.folders:
   speech_libritts:
-    - /star-home/jinzengrui/data/libritts/LibriTTS/train-clean-100
-    - /star-home/jinzengrui/data/libritts/LibriTTS/train-clean-360
-    - /star-home/jinzengrui/data/libritts/LibriTTS/train-other-500
+    - download/LibriTTS/train-clean-100
+    - download/LibriTTS/train-clean-360
+    - download/LibriTTS/train-other-500
 
 val/build_dataset.folders:
   speech_libritts:
-    - /star-home/jinzengrui/data/libritts/LibriTTS/dev-clean
-    - /star-home/jinzengrui/data/libritts/LibriTTS/dev-other
+    - download/LibriTTS/dev-clean
+    - download/LibriTTS/dev-other
 
 test/build_dataset.folders:
   speech_libritts:
-    - /star-home/jinzengrui/data/libritts/LibriTTS/test-clean
-    - /star-home/jinzengrui/data/libritts/LibriTTS/test-other
+    - download/LibriTTS/test-clean
+    - download/LibriTTS/test-other

@@ -290,7 +290,7 @@ def init_weights(m):
         nn.init.constant_(m.bias, 0)
 
 
-class FlowMatchModel(nn.Module):
+class FlowMatching(nn.Module):
     """Flow-matching model"""
     def __init__(
         self,
@@ -326,6 +326,25 @@ class FlowMatchModel(nn.Module):
             if hasattr(m, 'bias') and isinstance(m.bias, torch.Tensor):
                 nn.init.constant_(m.bias, 0)
 
+    def compute_mel_embed(
+        self,
+        mel: torch.Tensor,
+        time: int,
+        mask: Optional[torch.Tensor] = None,
+    ) -> torch.Tensor:
+        """Compute mel-spectrogram embedding, optionally down/up sample to a given length
+        Args:
+            mel: (batch, n_mels, time2)
+            mask: (batch, 1, time)
+
+        Returns:
+            mel_embed: (batch, dim, time)
+        """
+        if mel.shape[2] != time:
+            mel = nn.functional.interpolate(mel, size=time, mode='nearest')
+        mel_embed = self.mel_encoder(mel, mask=mask)
+        return mel_embed
+
     def forward(
         self,
         x1: torch.Tensor,
@@ -338,10 +357,7 @@ class FlowMatchModel(nn.Module):
             mel: (batch, n_mels, time2), expect time2 <= time
             mask: (batch, 1, time)
         """
-        assert mel.shape[2] <= x1.shape[2], (mel.shape, x1.shape)
-        if mel.shape[2] < x1.shape[2]:
-            mel = nn.functional.interpolate(mel, size=x1.shape[2], mode='nearest')
-        mel_embed = self.mel_encoder(mel, mask=mask)
+        mel_embed = self.compute_mel_embed(mel=mel, time=x1.shape[2], mask=mask)
 
         x0 = torch.randn_like(x1)
         t = torch.rand(x1.shape[0], 1, 1).to(x0)
@@ -358,6 +374,7 @@ class FlowMatchModel(nn.Module):
 
         return loss
 
+    @torch.no_grad()
     def infer(
         self,
         x0: torch.Tensor,
@@ -370,14 +387,12 @@ class FlowMatchModel(nn.Module):
             x0: (batch, dim, time)
             mel: (batch, n_mels, time2), expect time2 <= time
             mask: (batch, 1, time)
+            num_steps: int
 
         Returns:
             x: (batch, dim, time)
         """
-        assert mel.shape[2] <= x0.shape[2], (mel.shape, x0.shape)
-        if mel.shape[2] < x0.shape[2]:
-            mel = nn.functional.interpolate(mel, size=x0.shape[2], mode='nearest')
-        mel_embed = self.mel_encoder(mel, mask=mask)
+        mel_embed = self.compute_mel_embed(mel=mel, time=x0.shape[2], mask=mask)
 
         # use fixed euler solver for ODEs.
         t_span = torch.linspace(0, 1, num_steps + 1, device=x0.device)
@@ -402,14 +417,14 @@ if __name__ == "__main__":
     dim = 512
     num_layers = 12
     mel_enc_num_layers = 4
-    model = FlowMatchModel(n_mels, dim, num_layers, mel_enc_num_layers)
+    model = FlowMatching(n_mels, dim, num_layers, mel_enc_num_layers)
     print(model)
     print("Total # of params: ", sum([p.numel() for p in model.parameters()]))
 
     batch = 2
     time = 200
     x = torch.randn(batch, dim, time)
-    mel = torch.randn(batch, n_mels, time - 1)
+    mel = torch.randn(batch, n_mels, time + 2)
     mask = torch.ones(batch, 1, time)
     loss = model(x, mel, mask)
     loss.backward()
