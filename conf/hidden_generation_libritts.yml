@@ -12,7 +12,7 @@ MelSpectrogram.sample_rate: 24000
 MelSpectrogram.n_fft: 1024
 MelSpectrogram.hop_length: 256
 MelSpectrogram.n_mels: 100
-MelSpectrogram.power: 1
+MelSpectrogram.power: 2
 MelSpectrogram.center: False
 
 dac_path: outputs/dacnovq/weights.pth
