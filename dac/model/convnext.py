@@ -180,6 +180,7 @@ class ConvNeXtV2Model(nn.Module):
         self.use_dest_t = use_dest_t
 
         self.in_proj = nn.Conv1d(in_dim, dim, 1)
+        self.in_norm = nn.LayerNorm(dim, eps=1e-6)
 
         self.time_embed = SinusoidalPosEmb(dim)
         self.time_mlp = nn.Sequential(
@@ -198,7 +199,7 @@ class ConvNeXtV2Model(nn.Module):
             for _ in range(num_layers)
         ])
 
-        self.norm = nn.LayerNorm(dim, eps=1e-6)
+        self.out_norm = nn.LayerNorm(dim, eps=1e-6)
         self.out_proj = nn.Conv1d(dim, out_dim, 1)
 
     def forward(
@@ -226,6 +227,8 @@ class ConvNeXtV2Model(nn.Module):
         assert mel_embed.shape == x.shape
         x = x + mel_embed
 
+        x = self.in_norm(x.transpose(1, 2)).transpose(1, 2)
+
         if self.use_dest_t:
             assert dest_t is not None and dest_t.shape == t.shape
             time_embed = torch.cat([self.time_embed(t), self.time_embed(dest_t)], dim=-1)
@@ -236,7 +239,7 @@ class ConvNeXtV2Model(nn.Module):
         for block in self.blocks:
             x = block(x, cond=time_embed, mask=mask)
 
-        x = self.norm(x.transpose(1, 2)).transpose(1, 2)
+        x = self.out_norm(x.transpose(1, 2)).transpose(1, 2)
         x = self.out_proj(x)
 
         return x
@@ -254,13 +257,14 @@ class MelEncoder(nn.Module):
     ):
         super().__init__()
         self.in_proj = nn.Conv1d(in_dim, dim, 1)
+        self.in_norm = nn.LayerNorm(dim, eps=1e-6)
         self.blocks = nn.ModuleList(
             [
                 ConvNeXtV2Block(dim, hidden_dim=4 * dim, drop_path_rate=drop_path_rate)
                 for _ in range(num_layers)
             ]
         )
-        self.norm = nn.LayerNorm(dim, eps=1e-6)
+        self.out_norm = nn.LayerNorm(dim, eps=1e-6)
         self.out_proj = nn.Conv1d(dim, out_dim, 1)
 
     def forward(
@@ -277,10 +281,14 @@ class MelEncoder(nn.Module):
             x: (batch, out_dim, time)
         """
         x = self.in_proj(x)
+        x = self.in_norm(x.transpose(1, 2)).transpose(1, 2)
+
         for block in self.blocks:
             x = block(x, mask=mask)
-        x = self.norm(x.transpose(1, 2)).transpose(1, 2)
+
+        x = self.out_norm(x.transpose(1, 2)).transpose(1, 2)
         x = self.out_proj(x)
+
         return x
 
 
@@ -332,6 +340,7 @@ class FlowMatching(nn.Module):
         mel: torch.Tensor,
         time: int,
         mask: Optional[torch.Tensor] = None,
+        clip_val: float = 1e-7,
     ) -> torch.Tensor:
         """Compute mel-spectrogram embedding, optionally down/up sample to a given length
         Args:
@@ -343,6 +352,7 @@ class FlowMatching(nn.Module):
         """
         if mel.shape[2] != time:
             mel = nn.functional.interpolate(mel, size=time, mode='nearest')
+        mel = torch.log(torch.clip(mel, min=clip_val))
         mel_embed = self.mel_encoder(mel, mask=mask)
         return mel_embed
 
