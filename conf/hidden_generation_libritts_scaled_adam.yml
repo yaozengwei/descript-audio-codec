@@ -1,0 +1,42 @@
+$include:
+  - conf/final/24khz.yml
+
+# Model setup
+FlowMatching.n_mels: 100
+FlowMatching.dim: 1024
+FlowMatching.num_layers: 12
+FlowMatching.mel_enc_num_layers: 4
+FlowMatching.drop_path_rate: 0.1
+
+MelSpectrogram.sample_rate: 24000
+MelSpectrogram.n_fft: 1024
+MelSpectrogram.hop_length: 256
+MelSpectrogram.n_mels: 100
+MelSpectrogram.power: 2
+MelSpectrogram.center: False
+
+dac_path: outputs/dacnovq/weights.pth
+
+# Optimization
+ScaledAdam.lr: 0.04
+ScaledAdam.clipping_scale: 2.0
+ScaledAdam.betas: [0.9, 0.98]
+Eden2.lr_batches: 7500
+Eden2.warmup_batches: 500
+Eden2.warmup_start: 0.1
+
+train/build_dataset.folders:
+  speech_libritts:
+    - download/LibriTTS/train-clean-100
+    - download/LibriTTS/train-clean-360
+    - download/LibriTTS/train-other-500
+
+val/build_dataset.folders:
+  speech_libritts:
+    - download/LibriTTS/dev-clean
+    - download/LibriTTS/dev-other
+
+test/build_dataset.folders:
+  speech_libritts:
+    - download/LibriTTS/test-clean
+    - download/LibriTTS/test-other
