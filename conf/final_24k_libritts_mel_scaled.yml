@@ -10,8 +10,9 @@ lambdas:
   mel/loss: 15.0
   adv/feat_loss: 2.0
   adv/gen_loss: 1.0
+  vq/commitment_loss: 0.25
+  vq/codebook_loss: 1.0
   mel_scaled/loss: 1.0
-  batch_rms/loss: 1.0
 
 # Loss setup
 MelScaledLoss.sample_rate: 24000
