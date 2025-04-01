@@ -3,10 +3,12 @@ $include:
 
 # Model setup
 FlowMatching.n_mels: 100
-FlowMatching.dim: 1024
+FlowMatching.in_dim: 64
+FlowMatching.dim: 512
+FlowMatching.out_dim: 64
 FlowMatching.num_layers: 12
 FlowMatching.mel_enc_num_layers: 4
-FlowMatching.drop_path_rate: 0.1
+FlowMatching.drop_path_rate: 0.0
 
 MelSpectrogram.sample_rate: 24000
 MelSpectrogram.n_fft: 1024
@@ -16,6 +18,8 @@ MelSpectrogram.power: 2
 MelSpectrogram.center: False
 
 dac_path: outputs/dacnovq/weights.pth
+
+AdamW.lr: 0.001
 
 train/build_dataset.folders:
   speech_libritts:
