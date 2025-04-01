@@ -121,7 +121,7 @@ def load(
     tag: str = "latest",
     load_weights: bool = False,
 ):
-    model, extra = None, {}
+    flow_matching, extra = None, {}
 
     if resume:
         kwargs = {
@@ -130,14 +130,15 @@ def load(
             "package": not load_weights,
         }
         tracker.print(f"Resuming from {str(Path('.').absolute())}/{kwargs['folder']}")
-        if (Path(kwargs["folder"]) / "hidden_generator").exists():
-            model, extra = HiddenGenerator.load_from_folder(**kwargs)
+        if (Path(kwargs["folder"]) / "flow_matching").exists():
+            flow_matching, extra = FlowMatching.load_from_folder(**kwargs)
 
-    if model is None:
-        dac_model = dac.model.DACNoVq.load(dac_path)
+    if flow_matching is None:
         flow_matching = FlowMatching()
-        mel = MelSpectrogram()
-        model = HiddenGenerator(flow_matching=flow_matching, dac=dac_model, mel=mel)
+
+    dac_model = dac.model.DACNoVq.load(dac_path)
+    mel = MelSpectrogram()
+    model = HiddenGenerator(flow_matching=flow_matching, dac=dac_model, mel=mel)
 
     # Freeze dac model
     model.dac.eval()
@@ -178,7 +179,7 @@ def load(
 @timer()
 @torch.no_grad()
 def val_loop(batch, state, accel):
-    state.model.eval()
+    state.model.flow_matching.eval()
     batch = util.prepare_batch(batch, accel.device)
     signal = state.val_data.transform(
         batch["signal"].clone(), **batch["transform_args"]
@@ -240,8 +241,8 @@ def checkpoint(state, save_iters, save_path):
             "tracker.pth": state.tracker.state_dict(),
             "metadata.pth": metadata,
         }
-        accel.unwrap(state.model).metadata = metadata
-        accel.unwrap(state.model).save_to_folder(
+        accel.unwrap(state.model.flow_matching).metadata = metadata
+        accel.unwrap(state.model.flow_matching).save_to_folder(
             f"{save_path}/{tag}", extra
         )
 
@@ -249,7 +250,7 @@ def checkpoint(state, save_iters, save_path):
 @torch.no_grad()
 def save_samples(state, val_idx, writer):
     state.tracker.print("Saving audio samples to TensorBoard")
-    state.model.eval()
+    state.model.flow_matching.eval()
 
     samples = [state.val_data[idx] for idx in val_idx]
     batch = state.val_data.collate(samples)

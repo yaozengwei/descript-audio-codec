@@ -19,11 +19,10 @@ import math
 from typing import Optional
 
 import torch
-from audiotools.ml import BaseModel
 from torch import nn
 
 
-class HiddenGenerator(BaseModel):
+class HiddenGenerator(nn.Module):
     """A flow matching based model that generates DAC hidden representations."""
     def __init__(
         self,
@@ -33,7 +32,7 @@ class HiddenGenerator(BaseModel):
     ):
         super().__init__()
         assert mel.sample_rate == dac.sample_rate
-        assert flow_matching.dim == dac.latent_dim
+        assert flow_matching.in_dim == dac.latent_dim
         self.flow_matching = flow_matching
         self.dac = dac
         self.mel = mel

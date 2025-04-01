@@ -15,10 +15,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import math
 from typing import Optional
 
-import math
 import torch
+from audiotools.ml import BaseModel
 from torch import nn
 
 
@@ -298,22 +299,25 @@ def init_weights(m):
         nn.init.constant_(m.bias, 0)
 
 
-class FlowMatching(nn.Module):
+class FlowMatching(BaseModel):
     """Flow-matching model"""
     def __init__(
         self,
         n_mels: int = 100,
+        in_dim: int = 64,
         dim: int = 512,
+        out_dim: int = 64,
         num_layers: int = 12,
         mel_enc_num_layers: int = 4,
         drop_path_rate: float = 0.0,
     ):
         super().__init__()
-        self.dim = dim
+        self.in_dim = in_dim
+        self.out_dim = out_dim
         self.estimator = ConvNeXtV2Model(
-            in_dim=dim,
+            in_dim=in_dim,
             dim=dim,
-            out_dim=dim,
+            out_dim=out_dim,
             num_layers=num_layers,
             drop_path_rate=drop_path_rate,
         )
@@ -364,8 +368,8 @@ class FlowMatching(nn.Module):
     ) -> torch.Tensor:
         """Compute flow-matching loss
         Args:
-            x1: (batch, dim, time)
-            mel: (batch, n_mels, time2), expect time2 <= time
+            x1: (batch, in_dim, time)
+            mel: (batch, n_mels, time2)
             mask: (batch, 1, time)
         """
         mel_embed = self.compute_mel_embed(mel=mel, time=x1.shape[2], mask=mask)
@@ -395,13 +399,13 @@ class FlowMatching(nn.Module):
     ) -> torch.Tensor:
         """Flow-matching inference.
         Args:
-            x0: (batch, dim, time)
+            x0: (batch, in_dim, time)
             mel: (batch, n_mels, time2), expect time2 <= time
             mask: (batch, 1, time)
             num_steps: int
 
         Returns:
-            x: (batch, dim, time)
+            x: (batch, out_dim, time)
         """
         mel_embed = self.compute_mel_embed(mel=mel, time=x0.shape[2], mask=mask)
 
@@ -425,16 +429,18 @@ class FlowMatching(nn.Module):
 
 if __name__ == "__main__":
     n_mels = 100
+    in_dim = 64
+    out_dim = 64
     dim = 512
     num_layers = 12
     mel_enc_num_layers = 4
-    model = FlowMatching(n_mels, dim, num_layers, mel_enc_num_layers)
+    model = FlowMatching(n_mels, in_dim, dim, out_dim, num_layers, mel_enc_num_layers)
     print(model)
     print("Total # of params: ", sum([p.numel() for p in model.parameters()]))
 
     batch = 2
     time = 200
-    x = torch.randn(batch, dim, time)
+    x = torch.randn(batch, in_dim, time)
     mel = torch.randn(batch, n_mels, time + 2)
     mask = torch.ones(batch, 1, time)
     loss = model(x, mel, mask)
