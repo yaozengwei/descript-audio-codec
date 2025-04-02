@@ -224,7 +224,7 @@ def train_loop(state, batch, accel, lambdas):
         )
 
     with accel.autocast():
-        out = state.generator(signal.audio_data, signal.sample_rate)
+        out = state.model(signal.audio_data, signal.sample_rate)
         recons = AudioSignal(out["audio"], signal.sample_rate)
         output["stft/loss"] = state.stft_loss(recons, signal)
         output["mel/loss"] = state.mel_loss(recons, signal)
@@ -256,7 +256,7 @@ def checkpoint(state, save_iters, save_path):
     tags = ["latest"]
     state.tracker.print(f"Saving to {str(Path('.').absolute())}")
     if state.tracker.is_best("val", "loss"):
-        state.tracker.print("Best generator so far")
+        state.tracker.print("Best model so far")
         tags.append("best")
     if state.tracker.step in save_iters:
         tags.append(f"{state.tracker.step // 1000}k")

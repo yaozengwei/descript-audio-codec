@@ -32,6 +32,7 @@ class HiddenQuantizer(nn.Module):
         super().__init__()
         self.quantizer = quantizer
         self.dac = dac
+        self.sample_rate = dac.sample_rate
 
     def forward(
         self,
