@@ -1,0 +1,35 @@
+$include:
+  - conf/final/24khz.yml
+
+# Model setup
+# Quantization
+ResidualVectorQuantize.input_dim: 1024
+ResidualVectorQuantize.n_codebooks: 32
+ResidualVectorQuantize.codebook_size: 1024
+ResidualVectorQuantize.codebook_dim: 8
+ResidualVectorQuantize.quantizer_dropout: 0.5
+
+dac_path: outputs/dacnovq/weights.pth
+
+AdamW.lr: 0.001
+
+lambdas:
+  vq/hidden_loss: 1.0
+  vq/commitment_loss: 0.25
+  vq/codebook_loss: 1.0
+
+train/build_dataset.folders:
+  speech_libritts:
+    - download/LibriTTS/train-clean-100
+    - download/LibriTTS/train-clean-360
+    - download/LibriTTS/train-other-500
+
+val/build_dataset.folders:
+  speech_libritts:
+    - download/LibriTTS/dev-clean
+    - download/LibriTTS/dev-other
+
+test/build_dataset.folders:
+  speech_libritts:
+    - download/LibriTTS/test-clean
+    - download/LibriTTS/test-other

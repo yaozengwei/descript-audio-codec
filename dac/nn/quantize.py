@@ -4,6 +4,7 @@ import numpy as np
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
+from audiotools.ml import BaseModel
 from einops import rearrange
 from torch.nn.utils import weight_norm
 
@@ -94,7 +95,7 @@ class VectorQuantize(nn.Module):
         return z_q, indices
 
 
-class ResidualVectorQuantize(nn.Module):
+class ResidualVectorQuantize(BaseModel):
     """
     Introduced in SoundStream: An end2end neural audio codec
     https://arxiv.org/abs/2107.03312
