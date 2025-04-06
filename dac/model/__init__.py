@@ -7,3 +7,6 @@ from .dac_add_noise import DACAddNoise
 from .convnext import FlowMatching
 from .hidden_generator import HiddenGenerator
 from .hidden_quantizer import HiddenQuantizer
+
+from .dac_no_wn import DACNoWn
+from .discriminator_no_wn import DiscriminatorNoWn

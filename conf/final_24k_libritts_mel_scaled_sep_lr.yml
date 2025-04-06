@@ -1,0 +1,48 @@
+$include:
+  - conf/final/24khz.yml
+
+# Optimization
+generator/AdamW.betas: [0.8, 0.99]
+generator/AdamW.lr: 0.0002
+generator/ExponentialLR.gamma: 0.999996
+discriminator/AdamW.betas: [0.8, 0.99]
+discriminator/AdamW.lr: 0.0004
+discriminator/ExponentialLR.gamma: 0.999996
+
+# 1gpu
+# batch_size: 256
+# val_batch_size: 256
+# num_workers: 8
+# resume: true
+lambdas:
+  mel/loss: 15.0
+  adv/feat_loss: 2.0
+  adv/gen_loss: 1.0
+  vq/commitment_loss: 0.25
+  vq/codebook_loss: 1.0
+  mel_scaled/loss: 5.0
+
+# Loss setup
+MelScaledLoss.sample_rate: 24000
+MelScaledLoss.n_mels: [5, 10, 20, 40, 80, 160, 320]
+MelScaledLoss.window_lengths: [32, 64, 128, 256, 512, 1024, 2048]
+MelScaledLoss.eps: 1.0e-7
+MelScaledLoss.loss_power: 0.5
+MelScaledLoss.mel_fmin: [0, 0, 0, 0, 0, 0, 0]
+MelScaledLoss.mel_fmax: [null, null, null, null, null, null, null]
+
+train/build_dataset.folders:
+  speech_libritts:
+    - download/LibriTTS/train-clean-100
+    - download/LibriTTS/train-clean-360
+    - download/LibriTTS/train-other-500
+
+val/build_dataset.folders:
+  speech_libritts:
+    - download/LibriTTS/dev-clean
+    - download/LibriTTS/dev-other
+
+test/build_dataset.folders:
+  speech_libritts:
+    - download/LibriTTS/test-clean
+    - download/LibriTTS/test-other
