@@ -175,17 +175,15 @@ class ConvNeXtV2Model(nn.Module):
         out_dim: int,
         num_layers: int,
         drop_path_rate: float = 0.0,
-        use_dest_t: bool = False,
     ):
         super().__init__()
-        self.use_dest_t = use_dest_t
 
         self.in_proj = nn.Conv1d(in_dim, dim, 1)
         self.in_norm = nn.LayerNorm(dim, eps=1e-6)
 
         self.time_embed = SinusoidalPosEmb(dim)
         self.time_mlp = nn.Sequential(
-            nn.Linear(dim if not use_dest_t else 2 * dim, 4 * dim),
+            nn.Linear(dim, 4 * dim),
             nn.SiLU(),
             nn.Linear(4 * dim, dim),
         )
@@ -208,7 +206,6 @@ class ConvNeXtV2Model(nn.Module):
         x: torch.Tensor,
         mel_embed: torch.Tensor,
         t: torch.Tensor,
-        dest_t: Optional[torch.Tensor] = None,
         mask: Optional[torch.Tensor] = None,
     ) -> torch.Tensor:
         """
@@ -216,7 +213,6 @@ class ConvNeXtV2Model(nn.Module):
             x: (batch, in_dim, time)
             mel_embed: (batch, dim, time)
             t: (batch,)
-            dest_t: (batch,)
             mask: (batch, 1, time)
 
         Returns:
@@ -230,11 +226,7 @@ class ConvNeXtV2Model(nn.Module):
 
         x = self.in_norm(x.transpose(1, 2)).transpose(1, 2)
 
-        if self.use_dest_t:
-            assert dest_t is not None and dest_t.shape == t.shape
-            time_embed = torch.cat([self.time_embed(t), self.time_embed(dest_t)], dim=-1)
-        else:
-            time_embed = self.time_embed(t)
+        time_embed = self.time_embed(t)
         time_embed = self.time_mlp(time_embed)  # (batch, channels)
 
         for block in self.blocks:
