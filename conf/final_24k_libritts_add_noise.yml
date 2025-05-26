@@ -5,9 +5,10 @@ $include:
 DACAddNoise.sample_rate: 24000
 DACAddNoise.encoder_dim: 64
 DACAddNoise.encoder_rates: [2, 4, 5, 8]
+DACAddNoise.latent_dim: 320
 DACAddNoise.decoder_dim: 1536
 DACAddNoise.decoder_rates: [8, 5, 4, 2]
-DACAddNoise.max_epsilon: 0.1
+DACAddNoise.max_epsilon: 0.2
 
 # 1gpu
 # batch_size: 36
@@ -21,7 +22,8 @@ lambdas:
   vq/commitment_loss: 0.25
   vq/codebook_loss: 1.0
   mel_scaled/loss: 1.0
-  batch_rms/loss: 1.0
+  batch_rms/loss: 5.0
+    # batch_rms/loss: 1.0
 
 # Loss setup
 MelScaledLoss.sample_rate: 24000
@@ -31,6 +33,7 @@ MelScaledLoss.eps: 1.0e-7
 MelScaledLoss.loss_power: 0.5
 MelScaledLoss.mel_fmin: [0, 0, 0, 0, 0, 0, 0]
 MelScaledLoss.mel_fmax: [null, null, null, null, null, null, null]
+BatchRMSLoss.rms_limit: 1.0
 
 train/build_dataset.folders:
   speech_libritts:
