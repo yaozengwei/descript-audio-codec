@@ -292,7 +292,7 @@ def checkpoint(state, save_iters, save_path):
     metadata = {"logs": state.tracker.history}
 
     tags = ["latest"]
-    state.tracker.print(f"Saving to {str(Path('.').absolute())}")
+    state.tracker.print(f"Saving to {save_path}")
     if state.tracker.is_best("val", "mel/loss"):
         state.tracker.print("Best generator so far")
         tags.append("best")
