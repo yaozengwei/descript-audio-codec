@@ -1,10 +1,14 @@
 $include:
   - conf/final/24khz.yml
 
-# 1gpu
-# batch_size: 36
-# val_batch_size: 36
-# num_workers: 8
+# Model setup
+DAC.sample_rate: 24000
+DAC.encoder_dim: 64
+DAC.encoder_rates: [2, 4, 5, 8]
+DAC.latent_dim: 64
+DAC.decoder_dim: 1536
+DAC.decoder_rates: [8, 5, 4, 2]
+
 # resume: true
 
 train/build_dataset.folders:
