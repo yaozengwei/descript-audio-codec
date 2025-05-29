@@ -38,7 +38,7 @@ def ExponentialLR(optimizer, gamma: float = 1.0):
 
 
 # Models
-DACNoVq = argbind.bind(dac.model.DACNoVq)
+DACInfoBN = argbind.bind(dac.model.DACInfoBN)
 Discriminator = argbind.bind(dac.model.Discriminator)
 
 # Data
@@ -102,7 +102,7 @@ def build_dataset(
 
 @dataclass
 class State:
-    generator: DACNoVq
+    generator: DACInfoBN
     optimizer_g: AdamW
     scheduler_g: ExponentialLR
 
@@ -114,7 +114,6 @@ class State:
     mel_loss: losses.MelSpectrogramLoss
     gan_loss: losses.GANLoss
     waveform_loss: losses.L1Loss
-    mel_scaled_loss: losses.MelScaledLoss
     batch_rms_loss: losses.BatchRMSLoss
 
     train_data: AudioDataset
@@ -144,11 +143,11 @@ def load(
         }
         tracker.print(f"Resuming from {str(Path('.').absolute())}/{kwargs['folder']}")
         if (Path(kwargs["folder"]) / "dacnovq").exists():
-            generator, g_extra = DACNoVq.load_from_folder(**kwargs)
+            generator, g_extra = DACInfoBN.load_from_folder(**kwargs)
         if (Path(kwargs["folder"]) / "discriminator").exists():
             discriminator, d_extra = Discriminator.load_from_folder(**kwargs)
 
-    generator = DACNoVq() if generator is None else generator
+    generator = DACInfoBN() if generator is None else generator
     discriminator = Discriminator() if discriminator is None else discriminator
 
     tracker.print(generator)
@@ -185,7 +184,6 @@ def load(
     waveform_loss = losses.L1Loss()
     stft_loss = losses.MultiScaleSTFTLoss()
     mel_loss = losses.MelSpectrogramLoss()
-    mel_scaled_loss = losses.MelScaledLoss().to(accel.device)  # move mel basis tensor to device
     batch_rms_loss = losses.BatchRMSLoss()
     gan_loss = losses.GANLoss(discriminator)
 
@@ -199,7 +197,6 @@ def load(
         waveform_loss=waveform_loss,
         stft_loss=stft_loss,
         mel_loss=mel_loss,
-        mel_scaled_loss=mel_scaled_loss,
         batch_rms_loss=batch_rms_loss,
         gan_loss=gan_loss,
         tracker=tracker,
@@ -228,7 +225,6 @@ def val_loop(batch, state, accel):
         "mel/loss": state.mel_loss(recons, signal),
         "stft/loss": state.stft_loss(recons, signal),
         "waveform/loss": state.waveform_loss(recons, signal),
-        "mel_scaled/loss": state.mel_scaled_loss(recons, signal),
         "batch_rms/loss": batch_rms_loss[0],
         "batch_rms/value": batch_rms_loss[1],
     }
@@ -268,7 +264,6 @@ def train_loop(state, batch, accel, lambdas):
         output["stft/loss"] = state.stft_loss(recons, signal)
         output["mel/loss"] = state.mel_loss(recons, signal)
         output["waveform/loss"] = state.waveform_loss(recons, signal)
-        output["mel_scaled/loss"] = state.mel_scaled_loss(recons, signal)
         output["batch_rms/loss"] = batch_rms_loss[0]
         output["batch_rms/value"] = batch_rms_loss[1]
         (
@@ -299,7 +294,7 @@ def checkpoint(state, save_iters, save_path):
     tags = ["latest"]
     state.tracker.print(f"Saving to {str(Path('.').absolute())}")
     if state.tracker.is_best("val", "mel/loss"):
-        state.tracker.print(f"Best generator so far")
+        state.tracker.print("Best generator so far")
         tags.append("best")
     if state.tracker.step in save_iters:
         tags.append(f"{state.tracker.step // 1000}k")

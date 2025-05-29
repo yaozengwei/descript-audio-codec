@@ -145,7 +145,9 @@ class Decoder(nn.Module):
         return self.model(x)
 
 
-class DACNoVq(BaseModel, CodecMixin):
+class DACInfoBN(BaseModel, CodecMixin):
+    """DAC model, replace the RVQ module with a information-bottleneck module
+    """
     def __init__(
         self,
         encoder_dim: int = 64,
@@ -154,7 +156,7 @@ class DACNoVq(BaseModel, CodecMixin):
         decoder_dim: int = 1536,
         decoder_rates: List[int] = [8, 8, 4, 2],
         sample_rate: int = 44100,
-        max_epsilon: float = 0.1,
+        max_epsilon: float = 0.2,
     ):
         super().__init__()
 
