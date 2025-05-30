@@ -144,7 +144,12 @@ def load(
         p.requires_grad_(False)
 
     mel = MelSpectrogram()
-    model = DACHiddenFlowMatching(flow_matching=flow_matching, dac=dac_model, mel=mel)
+    model = DACHiddenFlowMatching(
+        flow_matching=flow_matching,
+        dac=dac_model,
+        mel=mel,
+        dac_has_quantizer=(dac_class == "DAC"),
+    )
 
     tracker.print(model)
 

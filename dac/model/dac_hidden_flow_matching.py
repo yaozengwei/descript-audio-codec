@@ -29,6 +29,7 @@ class DACHiddenFlowMatching(nn.Module):
         flow_matching: nn.Module,
         dac: nn.Module,
         mel: nn.Module,
+        dac_has_quantizer: bool = False,
     ):
         super().__init__()
         assert mel.sample_rate == dac.sample_rate
@@ -38,6 +39,7 @@ class DACHiddenFlowMatching(nn.Module):
         self.mel = mel
         self.sample_rate = dac.sample_rate
         self.dim = dac.latent_dim
+        self.dac_has_quantizer = dac_has_quantizer
 
     def forward(
         self,
@@ -55,9 +57,11 @@ class DACHiddenFlowMatching(nn.Module):
 
         with torch.no_grad():
             audio_data = self.dac.preprocess(audio_data, sample_rate)
-            z = self.dac.encode(audio_data)
-            if isinstance(z, (list, tuple)):
-                z = z[0]
+            if not self.dac_has_quantizer:
+                z = self.dac.encode(audio_data)
+            else:
+                # The DAC encode() function involves quantization
+                z = self.dac.encoder(audio_data)
 
         loss = self.flow_matching(x1=z, mel=mel)
         return loss
@@ -85,8 +89,11 @@ class DACHiddenFlowMatching(nn.Module):
         noise = torch.randn(batch, self.dim, z_len).to(audio_data)
 
         z = self.flow_matching.infer(x0=noise, mel=mel, num_steps=num_steps)
-        recons = self.dac.decode(z)
 
+        if self.dac_has_quantizer:
+            z = self.dac.quantizer(z)[0]
+
+        recons = self.dac.decode(z)
         return {
             "z": z,
             "audio": recons[:, :time]
