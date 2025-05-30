@@ -117,6 +117,7 @@ def load(
     tracker: Tracker,
     save_path: str,
     dac_path: str,
+    dac_class: str,
     resume: bool = False,
     tag: str = "latest",
     load_weights: bool = False,
@@ -136,7 +137,7 @@ def load(
     if flow_matching is None:
         flow_matching = FlowMatching()
 
-    dac_model = dac.model.DACInfoBN.load(dac_path)
+    dac_model = getattr(dac.model, dac_class).load(dac_path)
     dac_model.eval()
     # Freeze dac model
     for p in dac_model.parameters():
@@ -225,7 +226,7 @@ def checkpoint(state, save_iters, save_path):
     metadata = {"logs": state.tracker.history}
 
     tags = ["latest"]
-    state.tracker.print(f"Saving to {str(Path('.').absolute())}")
+    state.tracker.print(f"Saving to {save_path}")
     if state.tracker.is_best("val", "loss"):
         state.tracker.print("Best generator so far")
         tags.append("best")
@@ -289,6 +290,7 @@ def train(
     seed: int = 0,
     save_path: str = "ckpt",
     dac_path: str = "ckpt",
+    dac_class: str = "DACInfoBN",
     num_iters: int = 250000,
     save_iters: list = [10000, 50000, 100000, 200000],
     sample_freq: int = 10000,
@@ -307,7 +309,7 @@ def train(
         writer=writer, log_file=f"{save_path}/log.txt", rank=accel.local_rank
     )
 
-    state = load(args, accel, tracker, save_path, dac_path)
+    state = load(args, accel, tracker, save_path, dac_path, dac_class=dac_class)
     train_dataloader = accel.prepare_dataloader(
         state.train_data,
         start_idx=state.tracker.step * batch_size,

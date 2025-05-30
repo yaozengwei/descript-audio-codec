@@ -16,10 +16,11 @@ MelSpectrogram.n_mels: 100
 MelSpectrogram.power: 2
 MelSpectrogram.center: False
 
-dac_path: outputs/dac/weights.pth
+dac_path: outputs/dacinfobn/weights.pth
+dac_class: DACInfoBN
 
 AdamW.lr: 0.0005
-batch_size: 256
+batch_size: 512
 train/AudioDataset.duration: 1.0
 num_iters: 400000
 save_iters: [10000, 50000, 100000, 200000]
