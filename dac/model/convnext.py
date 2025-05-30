@@ -75,7 +75,7 @@ class DropPath(nn.Module):
         return drop_path(x, self.drop_prob, self.training, self.scale_by_keep)
 
     def extra_repr(self):
-        return f'drop_prob={round(self.drop_prob,3):0.3f}'
+        return f'drop_prob={round(self.drop_prob, 3):0.3f}'
 
 
 class GRN(nn.Module):
@@ -167,7 +167,7 @@ class ConvNeXtV2Block(nn.Module):
 
 
 class ConvNeXtV2Model(nn.Module):
-    """ConvNeXtV2-based model for flow-matching estimation"""
+    """ConvNeXtV2-based model for flow fields estimation"""
     def __init__(
         self,
         in_dim: int,
@@ -204,26 +204,24 @@ class ConvNeXtV2Model(nn.Module):
     def forward(
         self,
         x: torch.Tensor,
-        mel_embed: torch.Tensor,
         t: torch.Tensor,
+        cond_embed: Optional[torch.Tensor] = None,
         mask: Optional[torch.Tensor] = None,
     ) -> torch.Tensor:
         """
         Args:
             x: (batch, in_dim, time)
-            mel_embed: (batch, dim, time)
             t: (batch,)
+            cond_embed: (batch, dim, time)
             mask: (batch, 1, time)
 
         Returns:
             x: (batch, out_dim, time)
         """
         x = self.in_proj(x)
-
-        # add mel-spectrogram embedding
-        assert mel_embed.shape == x.shape
-        x = x + mel_embed
-
+        # add condition embedding, e.g., mel-spectrogram embedding
+        if cond_embed is not None:
+            x = x + cond_embed
         x = self.in_norm(x.transpose(1, 2)).transpose(1, 2)
 
         time_embed = self.time_embed(t)
@@ -239,7 +237,7 @@ class ConvNeXtV2Model(nn.Module):
 
 
 class MelEncoder(nn.Module):
-    """ConvNeXt-based mel-spectrogram encoder."""
+    """ConvNeXtV2-based mel-spectrogram encoder."""
     def __init__(
         self,
         in_dim: int,
@@ -251,12 +249,16 @@ class MelEncoder(nn.Module):
         super().__init__()
         self.in_proj = nn.Conv1d(in_dim, dim, 1)
         self.in_norm = nn.LayerNorm(dim, eps=1e-6)
-        self.blocks = nn.ModuleList(
-            [
-                ConvNeXtV2Block(dim, hidden_dim=4 * dim, drop_path_rate=drop_path_rate)
-                for _ in range(num_layers)
-            ]
-        )
+
+        self.blocks = nn.ModuleList([
+            ConvNeXtV2Block(
+                dim,
+                hidden_dim=4 * dim,
+                drop_path_rate=drop_path_rate,
+            )
+            for _ in range(num_layers)
+        ])
+
         self.out_norm = nn.LayerNorm(dim, eps=1e-6)
         self.out_proj = nn.Conv1d(dim, out_dim, 1)
 
@@ -285,12 +287,6 @@ class MelEncoder(nn.Module):
         return x
 
 
-def init_weights(m):
-    if isinstance(m, nn.Conv1d):
-        nn.init.trunc_normal_(m.weight, std=0.02)
-        nn.init.constant_(m.bias, 0)
-
-
 class FlowMatching(BaseModel):
     """Flow-matching model"""
     def __init__(
@@ -298,14 +294,15 @@ class FlowMatching(BaseModel):
         n_mels: int = 100,
         in_dim: int = 64,
         dim: int = 512,
-        out_dim: int = 64,
-        num_layers: int = 12,
+        out_dim: Optional[int] = None,
+        num_layers: int = 8,
         mel_enc_num_layers: int = 4,
         drop_path_rate: float = 0.0,
     ):
         super().__init__()
         self.in_dim = in_dim
-        self.out_dim = out_dim
+        out_dim = out_dim if out_dim is not None else in_dim
+
         self.estimator = ConvNeXtV2Model(
             in_dim=in_dim,
             dim=dim,
@@ -358,7 +355,7 @@ class FlowMatching(BaseModel):
         mel: torch.Tensor,
         mask: Optional[torch.Tensor] = None,
     ) -> torch.Tensor:
-        """Compute flow-matching loss
+        """Compute flow-matching loss.
         Args:
             x1: (batch, in_dim, time)
             mel: (batch, n_mels, time2)
@@ -371,7 +368,7 @@ class FlowMatching(BaseModel):
         xt = (1.0 - t) * x0 + t * x1
         ut = x1 - x0
 
-        vt = self.estimator(xt, mel_embed=mel_embed, t=t.squeeze(), mask=mask)
+        vt = self.estimator(x=xt, t=t.squeeze(), cond_embed=mel_embed, mask=mask)
 
         err = ut - vt
         if mask is not None:
@@ -409,8 +406,8 @@ class FlowMatching(BaseModel):
         for step in range(1, len(t_span)):
             vt = self.estimator(
                 x,
-                mel_embed=mel_embed,
                 t=t.unsqueeze(0).expand(batch),
+                cond_embed=mel_embed,
                 mask=mask,
             )
             x = x + vt * dt
@@ -424,7 +421,7 @@ if __name__ == "__main__":
     in_dim = 64
     out_dim = 64
     dim = 512
-    num_layers = 12
+    num_layers = 8
     mel_enc_num_layers = 4
     model = FlowMatching(n_mels, in_dim, dim, out_dim, num_layers, mel_enc_num_layers)
     print(model)

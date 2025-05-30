@@ -22,8 +22,8 @@ import torch
 from torch import nn
 
 
-class HiddenGenerator(nn.Module):
-    """A flow matching based model that generates DAC hidden representations."""
+class DACHiddenFlowMatching(nn.Module):
+    """A flow matching model that generates DAC hidden representations."""
     def __init__(
         self,
         flow_matching: nn.Module,
@@ -56,6 +56,8 @@ class HiddenGenerator(nn.Module):
         with torch.no_grad():
             audio_data = self.dac.preprocess(audio_data, sample_rate)
             z = self.dac.encode(audio_data)
+            if isinstance(z, (list, tuple)):
+                z = z[0]
 
         loss = self.flow_matching(x1=z, mel=mel)
         return loss

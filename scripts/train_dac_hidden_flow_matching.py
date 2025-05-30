@@ -20,7 +20,7 @@ from audiotools.ml.decorators import when
 from torch.utils.tensorboard import SummaryWriter
 
 import dac
-from dac.model import HiddenGenerator
+from dac.model import DACHiddenFlowMatching
 
 warnings.filterwarnings("ignore", category=UserWarning)
 
@@ -100,7 +100,7 @@ def build_dataset(
 
 @dataclass
 class State:
-    model: HiddenGenerator
+    model: DACHiddenFlowMatching
     optimizer: AdamW
     scheduler: ExponentialLR
 
@@ -136,14 +136,14 @@ def load(
     if flow_matching is None:
         flow_matching = FlowMatching()
 
-    dac_model = dac.model.DACNoVq.load(dac_path)
-    mel = MelSpectrogram()
-    model = HiddenGenerator(flow_matching=flow_matching, dac=dac_model, mel=mel)
-
+    dac_model = dac.model.DACInfoBN.load(dac_path)
+    dac_model.eval()
     # Freeze dac model
-    model.dac.eval()
-    for p in model.dac.parameters():
+    for p in dac_model.parameters():
         p.requires_grad_(False)
+
+    mel = MelSpectrogram()
+    model = DACHiddenFlowMatching(flow_matching=flow_matching, dac=dac_model, mel=mel)
 
     tracker.print(model)
 
@@ -185,9 +185,7 @@ def val_loop(batch, state, accel):
         batch["signal"].clone(), **batch["transform_args"]
     )
     loss = state.model(signal.audio_data, signal.sample_rate)
-    return {
-        "loss": loss,
-    }
+    return {"loss": loss}
 
 
 @timer()
@@ -260,7 +258,7 @@ def save_samples(state, val_idx, writer):
     )
 
     audio_dict = {}
-    for step in [1, 2, 4, 8]:
+    for step in [1, 2, 4, 8, 16]:
         out = state.model.infer(signal.audio_data, signal.sample_rate, num_steps=step)
         recons = AudioSignal(out["audio"], signal.sample_rate)
         audio_dict[f"recons_step_{step}"] = recons
