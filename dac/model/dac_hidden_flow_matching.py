@@ -57,11 +57,8 @@ class DACHiddenFlowMatching(nn.Module):
 
         with torch.no_grad():
             audio_data = self.dac.preprocess(audio_data, sample_rate)
-            if not self.dac_has_quantizer:
-                z = self.dac.encode(audio_data)
-            else:
-                # The DAC encode() function involves quantization
-                z = self.dac.encoder(audio_data)
+            # We don't call encode() since DAC's encode() function involves quantization
+            z = self.dac.encoder(audio_data)
 
         loss = self.flow_matching(x1=z, mel=mel)
         return loss
